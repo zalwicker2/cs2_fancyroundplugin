@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Drawing;
 
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
@@ -12,6 +13,9 @@ using CounterStrikeSharp.API.Modules.Menu;
 using CounterStrikeSharp.API.Modules.Timers;
 using CounterStrikeSharp.API.Modules.Utils;
 
+using System;
+using System.IO;
+
 namespace FancyRoundPlugin
 {
     public class FancyRoundPlugin : BasePlugin
@@ -20,330 +24,185 @@ namespace FancyRoundPlugin
 
         public override string ModuleVersion => "0.0.1";
 
+        private BaseRound? currentRound = null;
+
         private void SendMessageToAllPlayers(string msg)
         {
-            foreach(CCSPlayerController plr in Utilities.GetPlayers())
+            foreach (CCSPlayerController plr in Utilities.GetPlayers())
             {
-                
+
                 plr.PrintToChat(msg);
                 plr.PrintToCenter(msg);
             }
         }
 
-        private CCSPlayerController[] GetTeamPlayers(CsTeam team)
-        {
-            List<CCSPlayerController> plrs = new List<CCSPlayerController>();
-            foreach (CCSPlayerController plr in Utilities.GetPlayers())
-            {
+        int roundTick = 0;
 
-                if(plr.Team == team)
-                {
-                    plrs.Add(plr);
-                }
-            }
-
-            return plrs.ToArray();
-        }
-
-        private void GiveOutBomb()
-        {
-            Random rnd = new Random();
-            CCSPlayerController[] ts = GetTeamPlayers(CsTeam.Terrorist);
-
-            int bomber = rnd.Next(ts.Length);
-            ts[bomber].GiveNamedItem("weapon_c4");
-        }
-
-        private void RemovePlayerWeapons(CCSPlayerController plr)
-        {
-            Console.WriteLine("has " + plr.PlayerPawn.Value.WeaponServices.ActiveWeapon.Value.Globalname);
-        }
-
-        private HookResult InfiniteGrenades(EventGrenadeThrown @event, GameEventInfo info)
-        {
-            Console.WriteLine("thrown " + @event.Weapon);
-            @event.Userid.GiveNamedItem("weapon_" + @event.Weapon);
-            return HookResult.Continue;
-        }
-
-        private HookResult DamageOnBlind(EventPlayerBlind @event, GameEventInfo info)
-        {
-                int damage = (int)Math.Round(Math.Exp(.923f * @event.BlindDuration)) - 1; //(int)Math.Round(20f * @event.BlindDuration);
-                Console.WriteLine(damage);
-                @event.Userid.PlayerPawn.Value.Health = @event.Userid.PlayerPawn.Value.Health - damage;
-                Utilities.SetStateChanged(@event.Userid.PlayerPawn.Value, "CBaseEntity", "m_iHealth");
-                if (@event.Userid.PlayerPawn.Value.Health <= 0)
-                {
-                    @event.Userid.CommitSuicide(true, true);
-                }
-                //@event.Userid.PawnHealth = @event.Userid.PawnHealth - (uint) Math.Round(20 * @event.BlindDuration);
-                Console.WriteLine(@event.BlindDuration);
-
-                return HookResult.Continue;
-        }
-
-        private HookResult TeleportOnPing(EventPlayerPing @event, GameEventInfo info)
-        {
-            Console.WriteLine("" + @event.X + " " + @event.Y + " " + @event.Z);
-            Console.WriteLine(@event.Userid.PlayerPawn.Value.AbsOrigin);
-            Vector pingLocation = new Vector(@event.X, @event.Y, @event.Z);
-            Vector diff = @event.Userid.PlayerPawn.Value.AbsOrigin - pingLocation;
-            int length = 50;
-            Vector unit = new Vector(length * diff.X / diff.Length(), length * diff.Y / diff.Length(), length * diff.Z / diff.Length());
-            if (@event.Z - @event.Userid.PlayerPawn.Value.AbsOrigin.Z < 300)
-            {
-                @event.Userid.PlayerPawn.Value.Teleport(new Vector(@event.X, @event.Y, @event.Z + 16f) + unit);
-            }
-
-            return HookResult.Continue;
-        }
+        Randomizer rng;
 
         public override void Load(bool hotReload)
         {
-            Console.WriteLine("mike is a bitch");
+
+            Console.WriteLine("mike is a bitch, plugin loaded");
 
             RegisterListener<Listeners.OnClientConnect>(OnPlayerConnect);
 
-            AddCommand("fuck", "fuck", OnFuckCommand);
-
             string eventName = "";
 
-            GameEventHandler<EventPlayerPing> hook = null;
+            rng = new Randomizer(15);
+
+            AddCommand("resetround", "resets teh round", (client, commandinfo) =>
+            {
+                CCSGameRules gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").First().GameRules!;
+                gameRules.TerminateRound(0, RoundEndReason.RoundDraw);
+            });
 
             RegisterEventHandler<EventRoundStart>((@event, info) =>
             {
                 CCSGameRules gameRules = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").First().GameRules!;
 
+                if (gameRules is null || gameRules.WarmupPeriod)
+                {
+                    return HookResult.Continue;
+                }
+                Random rnd = new Random();
+
                 int rounds = gameRules.TotalRoundsPlayed;
                 Console.WriteLine("round " + rounds + " start!");
-                Random rnd = new Random();
-                int num = rnd.Next(13);
+                //if((rounds + 1) % 3 == 0)
+                //{
+                int num = rng.PickRandom();
 
-                eventName = "";
-
-                Server.ExecuteCommand("sv_airaccelerate 3.6; sv_autobunnyhopping 0; sv_enablebunnyhopping 0; sv_falldamage_scale 1; mp_damage_vampiric_amount 0; sv_hegrenade_damage_multiplier 1; mp_damage_headshot_only 0;mp_damage_scale_ct_body 1; mp_damage_scale_ct_head 1; mp_damage_scale_t_body 1; mp_damage_scale_t_head 1; mp_taser_recharge_time 30; sv_gravity 800; weapon_air_spread_scale 1; weapon_accuracy_nospread 0; ammo_grenade_limit_flashbang 2; ammo_grenade_limit_total 4; ");
-
+                int money = rnd.Next(2, 10) * 1000;
                 foreach (CCSPlayerController plr in Utilities.GetPlayers())
                 {
-                    int money = rnd.Next(2000, 10000);
-                    plr.InGameMoneyServices.Account = money;
+                    plr!.InGameMoneyServices!.Account = money;
                 }
+
                 switch (num)
                 {
-                    default:
-                        SendMessageToAllPlayers("NORMAL ROUND");
+                    case 0:
+                        currentRound = new ZoomedOutRound(this);
                         break;
                     case 1:
-                        SendMessageToAllPlayers("LOW GRAV round");
-                        Server.ExecuteCommand("sv_gravity 200; weapon_air_spread_scale 0; weapon_accuracy_nospread 1");
+                        currentRound = new LowGravity(this);
                         break;
                     case 2:
-                        SendMessageToAllPlayers("BHOP round");
-                        Server.ExecuteCommand("sv_airaccelerate 1000; sv_autobunnyhopping 1; sv_enablebunnyhopping 1");
+                        currentRound = new BhopRound(this);
                         break;
                     case 3:
-                        SendMessageToAllPlayers("NO FALLING ROUND");
-                        Server.ExecuteCommand("sv_falldamage_scale 100");
+                        currentRound = new NoFallingRound(this);
                         break;
                     case 4:
-                        SendMessageToAllPlayers("VAMPIRE ROUND");
-                        Server.ExecuteCommand("mp_damage_vampiric_amount .25");
+                        currentRound = new VampireRound(this);
                         break;
                     case 5:
-                        SendMessageToAllPlayers("INSTA KILL NADES");
-                        Server.ExecuteCommand("sv_hegrenade_damage_multiplier 100;");
-                        RegisterEventHandler<EventGrenadeThrown>(InfiniteGrenades);
-                        eventName = "grenade";
-                        foreach (CCSPlayerController plr in Utilities.GetPlayers())
-                        {
-                            RemovePlayerWeapons(plr);
-                            plr.RemoveWeapons();
-                            plr.GiveNamedItem("weapon_knife");
-                            plr.GiveNamedItem("weapon_hegrenade");
-                            plr.InGameMoneyServices.Account = 0;
-                        }
-                        GiveOutBomb();
+                        currentRound = new InstaKillNadesRound(this);
                         break;
                     case 6:
-                        SendMessageToAllPlayers("HEADSHOT ONLY");
-                        Server.ExecuteCommand("mp_damage_headshot_only 1");
+                        currentRound = new HeadshotOnlyRound(this);
                         break;
                     case 8:
-                        SendMessageToAllPlayers("TELEPORT ROUND");
-                        eventName = "teleport";
+                        currentRound = new TeleportRound(this);
                         break;
                     case 9:
-                        SendMessageToAllPlayers("ZEUS ROUND");
-                        eventName = "zeus";
-                        foreach (CCSPlayerController plr in Utilities.GetPlayers())
-                        {
-                            plr.RemoveWeapons();
-                            plr.GiveNamedItem("weapon_taser");
-                            plr.InGameMoneyServices.Account = 0;
-                        }
-                        GiveOutBomb();
-                        Server.ExecuteCommand("mp_taser_recharge_time 1");
+                        currentRound = new ZeusRound(this);
                         break;
                     case 10:
-                        SendMessageToAllPlayers("DEADLY FLASH");
-
-                        RegisterEventHandler<EventGrenadeThrown>(InfiniteGrenades);
-                        RegisterEventHandler<EventPlayerBlind>(DamageOnBlind);
-                        foreach (CCSPlayerController plr in Utilities.GetPlayers()) {
-                            RemovePlayerWeapons(plr);
-                            plr.RemoveWeapons();
-                            plr.GiveNamedItem("weapon_knife");
-                            plr.GiveNamedItem("weapon_flashbang");
-                            plr.InGameMoneyServices.Account = 0;
-                        }
-                        GiveOutBomb();
-
+                        currentRound = new DeadlyFlashRound(this);
                         break;
-                    /*case 11:
-                        Server.ExecuteCommand("mp_respawn_on_death_ct 1");
-                        Server.ExecuteCommand("mp_respawn_on_death_t 1");
-                        SendMessageToAllPlayers("JUGGERNAUTS");
-
-                        CCSPlayerController[] players = Utilities.GetPlayers().ToArray();
-                        int PLAYERS_PER_JUGGERNAUT = 4;
-                        List<int> juggernautIds = new List<int>();
-                        for(int i = rnd.Next(0, PLAYERS_PER_JUGGERNAUT + 1); i < players.Length; i+=4)
-                        {
-                            juggernautIds.Add(i);
-                        }
-
-                        if(juggernautIds.Count == 0)
-                        {
-                            juggernautIds.Add(rnd.Next(0, players.Length));
-                        }
-
-                        Console.WriteLine(juggernautIds.ToString());
-
-                        for (int i = 0; i < players.Length; i++)
-                        {
-                            if (juggernautIds.Contains(i))
-                            {
-                                players[i].ChangeTeam(CsTeam.Terrorist);
-                                players[i].PlayerPawn.Value.Health = 500;
-                                Utilities.SetStateChanged(players[i].PlayerPawn.Value, "CBaseEntity", "m_iHealth");
-                            }
-                            else
-                            {
-                                players[i].ChangeTeam(CsTeam.CounterTerrorist);
-                            }
-                        }
-
-                        Server.ExecuteCommand("mp_respawn_on_death_ct 0");
-                        Server.ExecuteCommand("mp_respawn_on_death_t 0");
-                        break;*/
-
+                    case 11:
+                        currentRound = new SneakyRound(this);
+                        break;
+                    case 12:
+                        currentRound = new BigArmorRound(this);
+                        break;
+                    case 13:
+                        currentRound = new OverwatchRound(this);
+                        break;
+                    case 14:
+                        currentRound = new WallhackRound(this);
+                        break;
+                    case 15:
+                        currentRound = new ChickenRound(this);
+                        break;
+                    case 16:
+                        currentRound = new AgarioRound(this);
+                        break;
+                    case 17:
+                        currentRound = new ExplosiveBulletsRound(this);
+                        break;
                 }
+
+                if (currentRound != null)
+                {
+                    currentRound.OnRoundStart();
+                }
+
+                roundTick = 0;
+                foreach (CCSPlayerController plr in Utilities.GetPlayers())
+                {
+                    plr.PrintToCenterAlert(currentRound!.GetRoundName() + " Round");
+                    currentRound!.PlayerCommands(plr);
+                }
+
+                Server.PrintToChatAll($" >>> {ChatColors.Yellow}" + currentRound!.GetRoundName() + " Round");
+                Server.PrintToChatAll($" > {currentRound.GetRoundDescription()}");
+                //}
+
                 return HookResult.Continue;
             });
+
             RegisterEventHandler<EventPlayerSpawn>((@event, info) =>
             {
-                CCSPlayerController plr = @event.Userid;
-                switch (eventName)
+                if (currentRound != null)
                 {
-                    case "zeus":
-                        plr.RemoveWeapons();
-                        plr.GiveNamedItem("weapon_taser");
-                        plr.InGameMoneyServices.Account = 0;
-                        break;
-                    case "grenade":
-                        plr.RemoveWeapons();
-                        plr.GiveNamedItem("weapon_hegrenade");
-                        plr.InGameMoneyServices.Account = 0;
-                        break;
+                    currentRound.PlayerCommands(@event.Userid!);
                 }
                 return HookResult.Continue;
             });
-
-            //Console.WriteLine(@event.Userid.PlayerPawn.Value.WeaponServices.ActiveWeapon.Value.Globalname);
 
             RegisterEventHandler<EventRoundFreezeEnd>((@event, info) =>
             {
-                if(eventName == "teleport")
+                if (currentRound != null)
                 {
-                    RegisterEventHandler<EventPlayerPing>(TeleportOnPing);
-                } else if (eventName == "glow")
-                {
+                    currentRound.OnFreezeEnd();
                     foreach (CCSPlayerController plr in Utilities.GetPlayers())
                     {
-                        Schema.SetSchemaValue(plr.PlayerPawn.Value.Handle, "CBasePlayerPawn", "m_flDetectedByEnemySensorTime", 86400);
+                        plr.PrintToCenterAlert(currentRound.GetRoundName() + " Round");
                     }
                 }
+
                 return HookResult.Continue;
             });
 
             RegisterEventHandler<EventRoundEnd>((@event, info) =>
             {
-                DeregisterEventHandler<EventPlayerPing>(TeleportOnPing);
-                DeregisterEventHandler<EventPlayerBlind>(DamageOnBlind);
-                DeregisterEventHandler<EventGrenadeThrown>(InfiniteGrenades);
+                if (currentRound != null)
+                {
+                    currentRound.OnRoundEnd();
+                }
+                currentRound = null;
                 return HookResult.Continue;
             });
 
-            RegisterListener<Listeners.OnEntitySpawned>(entity =>
+            RegisterListener<Listeners.OnTick>(() =>
             {
-                Console.WriteLine(entity.DesignerName);
-                if (entity.DesignerName != "smokegrenade_projectile") return;
-
-                var projectile = new CSmokeGrenadeProjectile(entity.Handle);
-
-                // Changes smoke grenade colour to a random colour each time.
-                Server.NextFrame(() =>
+                if(currentRound != null)
                 {
-                    projectile.SmokeColor.X = 0f;
-                    projectile.SmokeColor.Y = 0f;
-                    projectile.SmokeColor.Z = 0f;
-                });
+                    currentRound.OnTick();
+                }
             });
         }
 
         private void OnPlayerConnect(int slot, string name, string ip)
         {
             var plr = new CCSPlayerController(NativeAPI.GetEntityFromIndex(slot + 1));
-            Console.WriteLine(name + " sucks");
-        }
-
-        private void OnFuckCommand(CCSPlayerController? client, CommandInfo commandinfo)
-        {
-            ShowMenu(client);
-
-            Server.NextFrame(() =>
+            if (plr != null && !plr.IsBot)
             {
-                client.PrintToCenterHtml("<h2>CS2 SUCKS</h2>" + "<p>MIKE IS GAY</p>", 5000);
-            });
-
-            //client.PlayerPawn.Value.Teleport(new Vector(0f, 0f, 0f));
-        }
-
-        public void ShowMenu(CCSPlayerController client)
-        {
-            var menu = new ChatMenu($"What mode do you want to play?");
-            menu.AddMenuOption("Low Gravity", (player, option) =>
-            {
-
-            }, false);
-            menu.AddMenuOption("Fast Speed", (player, option) =>
-            {
-
-            }, false);
-            menu.AddMenuOption("No Recoil", (player, option) =>
-            {
-
-            }, false);
-            menu.AddMenuOption("1HP", (player, option) =>
-            {
-
-            }, false);
-            menu.AddMenuOption("Negev Only", (player, option) =>
-            {
-
-            }, false);
-
-            MenuManager.OpenChatMenu(client, menu);
+                Console.WriteLine("STEAMID: " + plr.SteamID);
+                Server.PrintToChatAll($"some loser named {name} joined.");
+            }
         }
     }
 
