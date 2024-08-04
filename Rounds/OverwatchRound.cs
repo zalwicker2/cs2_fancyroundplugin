@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
 
 using System.Drawing;
@@ -7,15 +8,18 @@ using System.Drawing;
 class OverwatchRound : BaseRound
 {
     Dictionary<CCSPlayerController, string> roles = new Dictionary<CCSPlayerController, string>();
+    Dictionary<CCSPlayerController, string> models = new Dictionary<CCSPlayerController, string>();
 
     void SetTank(CCSPlayerController plr)
     {
         var playerPawn = plr.PlayerPawn!.Value!;
-        playerPawn.Health = 750;
+        playerPawn.Health = 250;
         Utilities.SetStateChanged(plr, "CBaseEntity", "m_iHealth");
-        Util.SetArmor(plr.PlayerPawn.Value!, 750, true);
-        Utilities.SetStateChanged(playerPawn, "CCSPlayerPawnBase", "m_ArmorValue");
-        playerPawn.VelocityModifier = -1;
+        Util.SetArmor(plr, 250, true, true);
+
+        models[plr] = playerPawn.CBodyComponent!.SceneNode!.GetSkeletonInstance().ModelState.ModelName;
+        Console.WriteLine(playerPawn.CBodyComponent!.SceneNode!.GetSkeletonInstance().ModelState.ModelName);
+
         if (plr.Team == CsTeam.CounterTerrorist)
         {
             playerPawn.SetModel("characters\\models\\ctm_heavy\\ctm_heavy.vmdl");
@@ -24,6 +28,7 @@ class OverwatchRound : BaseRound
         {
             playerPawn.SetModel("characters\\models\\tm_phoenix_heavy\\tm_phoenix_heavy.vmdl");
         }
+        playerPawn.Render = Color.FromArgb(255, 255, 180, 180);
         Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_CBodyComponent");
     }
 
@@ -32,7 +37,7 @@ class OverwatchRound : BaseRound
         var playerPawn = plr.PlayerPawn!.Value!;
         playerPawn.Health = 250;
         Utilities.SetStateChanged(plr, "CBaseEntity", "m_iHealth");
-        Util.SetArmor(plr.PlayerPawn.Value!, 250, true);
+        Util.SetArmor(plr, 250, true, false);
         playerPawn.Render = Color.FromArgb(255, 180, 180, 255);
         Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_CBodyComponent");
     }
@@ -42,7 +47,7 @@ class OverwatchRound : BaseRound
         var playerPawn = plr.PlayerPawn!.Value!;
         playerPawn.Health = 250;
         Utilities.SetStateChanged(plr, "CBaseEntity", "m_iHealth");
-        Util.SetArmor(plr.PlayerPawn.Value!, 250, true);
+        Util.SetArmor(plr, 250, true, false);
         playerPawn.Render = Color.FromArgb(255, 180, 255, 180);
         Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_CBodyComponent");
     }
@@ -53,7 +58,7 @@ class OverwatchRound : BaseRound
         int maxHealth = 250;
         if (roles[plr] == "tank")
         {
-            maxHealth = 750;
+            maxHealth = 250;
         }
 
         CCSPlayerPawn pawn = plr.PlayerPawn!.Value!;
@@ -75,8 +80,8 @@ class OverwatchRound : BaseRound
 
     HookResult OnPlayerHurt(EventPlayerHurt @event, GameEventInfo info)
     {
-        CCSPlayerController attacker = @event.Attacker;
-        CCSPlayerController victim = @event.Userid;
+        CCSPlayerController attacker = @event.Attacker!;
+        CCSPlayerController victim = @event.Userid!;
 
         Console.WriteLine(attacker);
         if(attacker == null)
@@ -88,8 +93,8 @@ class OverwatchRound : BaseRound
         {
             if(attacker.Team == victim.Team)
             {
-                attacker.ExecuteClientCommand("snd_toolvolume .2; play sounds/ui/armsrace_become_leader_match.vsnd_c"); 
-                victim.ExecuteClientCommand("snd_toolvolume .2; play sounds/ui/armsrace_become_leader_match.vsnd_c");
+                attacker.ExecuteClientCommand("snd_toolvolume .05; play sounds/ui/armsrace_become_leader_match.vsnd_c"); 
+                victim.ExecuteClientCommand("snd_toolvolume .05; play sounds/ui/armsrace_become_leader_match.vsnd_c");
                 AddHealth(victim, @event.DmgHealth + 5);
             } else
             {
@@ -181,6 +186,11 @@ class OverwatchRound : BaseRound
         {
             var playerPawn = plr.PlayerPawn!.Value!;
             playerPawn.Render = Color.FromArgb(255, 255, 255, 255);
+            Util.SetArmor(plr, 100, true, false);
+            if (models.ContainsKey(plr))
+            {
+                playerPawn.SetModel(models[plr]);
+            }
             Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_CBodyComponent");
         }
         roles.Clear();

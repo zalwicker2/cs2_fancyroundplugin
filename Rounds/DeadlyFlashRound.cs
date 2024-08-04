@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Commands;
 
 class DeadlyFlashRound : BaseRound
 {
@@ -29,6 +30,13 @@ class DeadlyFlashRound : BaseRound
 		return HookResult.Continue;
 	}
 
+	HookResult OnSwitchToKnife(CCSPlayerController? plr, CommandInfo info)
+	{
+		Console.WriteLine(plr.ToString());
+		plr.ExecuteClientCommand("slot7");
+		return HookResult.Continue;
+	}
+
     public override string GetRoundName()
     {
         return "Deadly Flash";
@@ -40,14 +48,16 @@ class DeadlyFlashRound : BaseRound
     }
 
     public override void OnRoundStart()
-	{
-		host.RegisterEventHandler<EventGrenadeThrown>(Util.InfiniteGrenades);
+    {
+        Util.RemoveBreakables();
+        host.RegisterEventHandler<EventGrenadeThrown>(Util.InfiniteGrenades);
 		host.RegisterEventHandler<EventPlayerBlind>(DamageOnBlind);
 	}
 
 	public override void PlayerCommands(CCSPlayerController plr)
     {
-		Util.SetInventory(plr, ["weapon_flashbang"], true); 
+		Util.SetInventory(plr, ["weapon_flashbang"], true);
+		plr.ExecuteClientCommand("slot7");
 		plr!.InGameMoneyServices!.Account = 0;
 	}
 

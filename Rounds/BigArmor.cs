@@ -1,6 +1,9 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
+using System.Drawing;
+using System.Numerics;
 
 class BigArmorRound : BaseRound
 {
@@ -22,8 +25,8 @@ class BigArmorRound : BaseRound
 
     public override void PlayerCommands(CCSPlayerController player)
     {
-        player.PlayerPawn.Value.Health = 500;
-        player.PlayerPawn.Value.ArmorValue = 500;
+        player.PlayerPawn.Value.Health = 100;
+        Util.SetArmor(player, 1000, true, true);
         Utilities.SetStateChanged(player.PlayerPawn.Value, "CCSPlayerPawnBase", "m_ArmorValue");
         if (player.Team == CsTeam.CounterTerrorist)
         {
@@ -35,11 +38,13 @@ class BigArmorRound : BaseRound
     }
 
     public override void OnRoundStart() { 
-		Server.ExecuteCommand("mp_damage_vampiric_amount 1; ");
     }
 
 	public override void OnRoundEnd()
-	{
-        Server.ExecuteCommand("mp_damage_vampiric_amount 0; ");
+    {
+        foreach (CCSPlayerController plr in Utilities.GetPlayers())
+        { 
+            Util.SetArmor(plr, 100, true, false);
+        }
     }
 }

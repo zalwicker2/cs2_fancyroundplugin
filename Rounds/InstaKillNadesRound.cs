@@ -26,11 +26,8 @@ class InstaKillNadesRound : BaseRound
 
 	public override void PlayerCommands(CCSPlayerController plr)
 	{
-        Util.RemovePlayerWeapons(plr);
-        plr.RemoveWeapons();
-        plr.GiveNamedItem("weapon_knife");
-        plr.GiveNamedItem("weapon_hegrenade");
-        plr.InGameMoneyServices!.Account = 0;
+        Util.SetInventory(plr, ["weapon_hegrenade"], true);
+		plr!.InGameMoneyServices!.Account = 0;
     }
 
 	public override void OnRoundEnd()

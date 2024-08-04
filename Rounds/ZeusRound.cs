@@ -21,7 +21,9 @@ class ZeusRound : BaseRound
 
     public override void OnRoundStart()
     {
+        Util.RemoveBreakables();
         Server.ExecuteCommand("mp_taser_recharge_time 1");
+        Util.DisableKnifeDamage(this.host);
     }
 
     public override void PlayerCommands(CCSPlayerController plr)
@@ -30,8 +32,14 @@ class ZeusRound : BaseRound
         plr!.InGameMoneyServices!.Account = 0;
     }
 
+    public override void OnFreezeEnd()
+    {
+        base.OnFreezeEnd();
+    }
+
     public override void OnRoundEnd()
     {
         Server.ExecuteCommand("mp_taser_recharge_time 30");
+        Util.EnableKnifeDamage(this.host);
     }
 }

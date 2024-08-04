@@ -125,7 +125,7 @@ public class Util
         Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_iHealth");
     }
 
-    public static void SetArmor(CCSPlayerPawn playerPawn, int amount, bool helmet)
+    /*public static void SetArmor(CCSPlayerPawn playerPawn, int amount, bool helmet)
     {
         playerPawn.ArmorValue = 250;
         if (helmet)
@@ -135,45 +135,51 @@ public class Util
             Utilities.SetStateChanged(playerPawn, "CBasePlayerPawn", "m_pItemServices");
         }
         Utilities.SetStateChanged(playerPawn, "CCSPlayerPawnBase", "m_ArmorValue");
-    }
+    }*/
 
     public static void SetInventory(CCSPlayerController plr, string[] items, bool keepKnife = true)
     {
         var playerPawn = plr.PlayerPawn.Value!;
         var weaponServices = playerPawn.WeaponServices!;
+        var itemServices = playerPawn.ItemServices!;
         foreach (CHandle<CBasePlayerWeapon> weapon in weaponServices.MyWeapons)
         {
-            
-            if (weapon.Value != null && weapon.Value.DesignerName != null && (weapon.Value!.DesignerName != "weapon_c4"))
+            if(weapon == null || weapon.Value == null) { continue; }
+            string weaponName = weapon.Value!.DesignerName;
+            if (weaponName != null && (weaponName != "weapon_c4"))
             {
-                if (keepKnife && weapon.Value!.DesignerName == "weapon_knife")
+                if (keepKnife && weaponName == "weapon_knife")
                 {
                     continue;
                 }
                 foreach (string filter in items)
                 {
-                    if (weapon.Value!.DesignerName == filter)
+                    if (weaponName == filter)
                     {
                         continue;
                     }
                 }
-                plr.RemoveItemByDesignerName(weapon.Value!.ToString());
                 weapon.Value!.Remove();
             }
         }
 
-        foreach (string item in items)
+        Server.NextFrame(() =>
         {
-            plr.GiveNamedItem(item);
-        }
+            foreach (string item in items)
+            {
+                plr.GiveNamedItem(item);
+            }
+        });
 
-        var knife = weaponServices.MyWeapons.First();
+        
+
+        /*var knife = weaponServices.MyWeapons.First();
         if (knife != null)
         {
             weaponServices.ActiveWeapon!.Raw = knife.Raw;
-            Utilities.SetStateChanged(plr.PlayerPawn.Value, "CPlayer_WeaponServices", "m_hActiveWeapon");
-            Utilities.SetStateChanged(plr.PlayerPawn.Value, "CCSPlayer_ViewModelServices", "m_hViewModel");
-        }
+            Utilities.SetStateChanged(plr.PlayerPawn.Value!, "CPlayer_WeaponServices", "m_hActiveWeapon");
+            Utilities.SetStateChanged(plr.PlayerPawn.Value!, "CCSPlayer_ViewModelServices", "m_hViewModel");
+        }*/
     }
 
     public static void RemoveAllWeaponsWithFilter(CCSPlayerController plr, string[] filters)
@@ -213,7 +219,7 @@ public class Util
 
         if (playerPawn.ArmorValue > 100)
         {
-            Util.SetArmor(playerPawn, 100, false);
+            Util.SetArmor(plr, 100, true, false);
         }
 
         if (playerPawn.Health > 100)
@@ -221,5 +227,55 @@ public class Util
             Util.SetHealth(playerPawn, 100);
         }
         Util.ShowPlayer(plr.PlayerPawn.Value!);
+    }
+
+    public static HookResult RemoveKnifeDamage(EventPlayerHurt @event, GameEventInfo info)
+    {
+        if(@event.Weapon == "knife")
+        {
+            return HookResult.Stop;
+        }
+        Console.WriteLine(@event.Weapon);
+        return HookResult.Continue;
+    }
+
+    public static void DisableKnifeDamage(BasePlugin plugin)
+    {
+        plugin.RegisterEventHandler<EventPlayerHurt>(RemoveKnifeDamage);
+    }
+
+    public static void EnableKnifeDamage(BasePlugin plugin)
+    {
+        plugin.DeregisterEventHandler<EventPlayerHurt>(RemoveKnifeDamage);
+    }
+
+    public static void SetArmor(CCSPlayerController playerController, int armor, bool helmet = false, bool heavy = false)
+    {
+        if (!playerController!.PawnIsAlive)
+            return;
+
+        playerController.PlayerPawn.Value!.ArmorValue = armor;
+        Utilities.SetStateChanged(playerController.PlayerPawn.Value, "CCSPlayerPawnBase", "m_ArmorValue");
+
+        if (!helmet && !heavy)
+            return;
+
+        var services = new CCSPlayer_ItemServices(playerController.PlayerPawn.Value.ItemServices!.Handle);
+        services.HasHelmet = helmet;
+        services.HasHeavyArmor = heavy;
+        Utilities.SetStateChanged(playerController.PlayerPawn.Value, "CBasePlayerPawn", "m_pItemServices");
+    }
+
+    public static void RemoveBreakables()
+    {
+        foreach (CBreakable breakable in Utilities.FindAllEntitiesByDesignerName<CBreakable>("func_breakable"))
+        {
+            breakable.Remove();
+        }
+
+        foreach (CDynamicProp breakable in Utilities.FindAllEntitiesByDesignerName<CDynamicProp>("prop_dynamic"))
+        {
+            breakable.Remove();
+        }
     }
 }
