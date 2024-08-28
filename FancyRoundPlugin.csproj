@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <Reference Include="CounterStrikeSharp.API">
-      <HintPath>C:/Users/Zach/Development/cs2/steamapps/common/Counter-Strike Global Offensive/game/csgo/addons/counterstrikesharp/api/CounterStrikeSharp.API.dll</HintPath>
+      <HintPath>./dependencies/CounterStrikeSharp.API</HintPath>
     </Reference>
   </ItemGroup>
 
