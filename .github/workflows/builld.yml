@@ -33,4 +33,4 @@ jobs:
       with:
         name: Build-Output
         path: |
-          ./bin/Release/
+          ./bin/Release/net8.0/
