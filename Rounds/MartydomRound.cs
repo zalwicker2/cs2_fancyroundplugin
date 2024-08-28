@@ -8,7 +8,7 @@ class MartydomRound : BaseRound
     {
         var heProjectile = Utilities.CreateEntityByName<CHEGrenadeProjectile>("hegrenade_projectile");
         var deadPlayer = @event.Userid;
-        var pawn = deadPlayer!.PlayerPawn.Value;
+        var pawn = deadPlayer!.PlayerPawn.Value!;
         if (heProjectile == null || !heProjectile.IsValid) return HookResult.Continue;
         var node = pawn.CBodyComponent!.SceneNode;
         Vector pos = node!.AbsOrigin;
@@ -21,6 +21,7 @@ class MartydomRound : BaseRound
         heProjectile.DispatchSpawn();
         heProjectile.AcceptInput("InitializeSpawnFromWorld", pawn, pawn, "");
         heProjectile.DetonateTime = 0;
+        heProjectile.Thrower.Raw = deadPlayer.PlayerPawn!.Raw;
         return HookResult.Continue;
     }
 
@@ -37,7 +38,7 @@ class MartydomRound : BaseRound
 
     public override string GetRoundDescription()
     {
-        return "dead people go boom";
+        return "Players explode when they die.";
     }
 
     public override void OnRoundStart() {

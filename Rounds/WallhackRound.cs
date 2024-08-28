@@ -15,7 +15,7 @@ class WallhackRound : BaseRound
     Dictionary<CCSPlayerController, CBaseModelEntity[]> walls = new Dictionary<CCSPlayerController, CBaseModelEntity[]>();
     void SetGlowing(CCSPlayerController plr)
     {
-        if (walls.ContainsKey(plr) != null)
+        if (walls.ContainsKey(plr))
         {
             StopGlowing(plr);
         }
@@ -52,7 +52,7 @@ class WallhackRound : BaseRound
 
     void StopGlowing(CCSPlayerController plr)
     {
-        if(!this.walls.ContainsKey(plr))
+        if(!walls.ContainsKey(plr))
         {
             return;
         }

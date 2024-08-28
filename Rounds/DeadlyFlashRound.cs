@@ -1,6 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Utils;
 
 class DeadlyFlashRound : BaseRound
 {
@@ -12,28 +12,52 @@ class DeadlyFlashRound : BaseRound
 
 	private HookResult DamageOnBlind(EventPlayerBlind @event, GameEventInfo info)
 	{
-		if(@event.Attacker.Team == @event.Userid.Team)
+		var attacker = @event.Attacker!;
+		var victim = @event.Userid!;
+		var victimPawn = victim.PlayerPawn.Value!;
+
+		if(attacker.Team == victim.Team && attacker != victim)
 		{
 			return HookResult.Continue;
 		}
-		int damage = (int)Math.Round(Math.Exp(.923f * @event.BlindDuration)) - 1; //(int)Math.Round(20f * @event.BlindDuration);
+		int damage = (int)Math.Round(Math.Exp(.923f * @event.BlindDuration)); //(int)Math.Round(20f * @event.BlindDuration);
 		Console.WriteLine(damage);
-		@event.Userid!.PlayerPawn.Value!.Health = @event.Userid!.PlayerPawn.Value!.Health - damage;
-		Utilities.SetStateChanged(@event.Userid.PlayerPawn.Value, "CBaseEntity", "m_iHealth");
-		if (@event.Userid.PlayerPawn.Value.Health <= 0)
+		if(attacker != victim)
 		{
-			@event.Userid.CommitSuicide(true, true);
+			damage *= 3;
 		}
-		//@event.Userid.PawnHealth = @event.Userid.PawnHealth - (uint) Math.Round(20 * @event.BlindDuration);
+		int health = victimPawn.Health - damage;
+		if(health <= 0)
+		{
+			try
+			{
+				if (victim.PawnIsAlive)
+				{
+					victim.CommitSuicide(true, true);
+				}
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+			}
+			
+        } else {
+
+			victimPawn.Health = health;
+            Utilities.SetStateChanged(victimPawn, "CBaseEntity", "m_iHealth");
+        }
+
 		Console.WriteLine(@event.BlindDuration);
 
 		return HookResult.Continue;
 	}
 
-	HookResult OnSwitchToKnife(CCSPlayerController? plr, CommandInfo info)
+	private HookResult KillOnFlashHit(EventPlayerHurt @event, GameEventInfo info)
 	{
-		Console.WriteLine(plr.ToString());
-		plr.ExecuteClientCommand("slot7");
+		if(@event.Weapon == "flashbang" && @event.Userid!.PawnIsAlive)
+        {
+            @event.Userid!.CommitSuicide(false, false);
+        }
 		return HookResult.Continue;
 	}
 
@@ -44,7 +68,7 @@ class DeadlyFlashRound : BaseRound
 
     public override string GetRoundDescription()
     {
-        return "Players take damage based on how flashed they are.";
+        return "Players take damage based on how flashed they are. Flashbang impacts are instant kills.";
     }
 
     public override void OnRoundStart()
@@ -52,17 +76,20 @@ class DeadlyFlashRound : BaseRound
         Util.RemoveBreakables();
         host.RegisterEventHandler<EventGrenadeThrown>(Util.InfiniteGrenades);
 		host.RegisterEventHandler<EventPlayerBlind>(DamageOnBlind);
-	}
+        host.RegisterEventHandler<EventPlayerHurt>(KillOnFlashHit);
+    }
 
 	public override void PlayerCommands(CCSPlayerController plr)
     {
-		Util.SetInventory(plr, ["weapon_flashbang"], true);
+        Util.SetInventory(plr, ["weapon_flashbang"], true);
 		plr.ExecuteClientCommand("slot7");
 		plr!.InGameMoneyServices!.Account = 0;
 	}
 
 	public override void OnRoundEnd()
-	{
-		host.DeregisterEventHandler<EventPlayerBlind>(DamageOnBlind);
-	}
+    {
+        host.DeregisterEventHandler<EventGrenadeThrown>(Util.InfiniteGrenades);
+        host.DeregisterEventHandler<EventPlayerBlind>(DamageOnBlind);
+        host.DeregisterEventHandler<EventPlayerHurt>(KillOnFlashHit);
+    }
 }

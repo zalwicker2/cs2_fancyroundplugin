@@ -13,7 +13,7 @@ class TeleportRound : BaseRound
     private HookResult TeleportOnPing(EventPlayerPing @event, GameEventInfo info)
     {
         Vector pingLocation = new Vector(@event.X, @event.Y, @event.Z);
-        if(@event.Userid!.PlayerPawn.Value != null)
+        if (@event.Userid!.PlayerPawn.Value != null)
         {
             Vector diff = @event.Userid!.PlayerPawn.Value!.AbsOrigin! - pingLocation;
             int length = 50;
@@ -23,13 +23,13 @@ class TeleportRound : BaseRound
                 @event.Userid!.PlayerPawn.Value!.Teleport(new Vector(@event.X, @event.Y, @event.Z + 16f) + unit);
             }
         }
-        
+
         return HookResult.Continue;
     }
 
     BasePlugin host;
     public TeleportRound(BasePlugin host)
-	{
+    {
         this.host = host;
     }
 
@@ -44,11 +44,11 @@ class TeleportRound : BaseRound
     }
 
     public override void OnFreezeEnd()
-	{
+    {
         host.RegisterEventHandler<EventPlayerPing>(TeleportOnPing);
     }
 
-	public override void OnRoundEnd()
+    public override void OnRoundEnd()
     {
         host.DeregisterEventHandler<EventPlayerPing>(TeleportOnPing);
     }

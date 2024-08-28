@@ -1,31 +1,31 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 
-class DontMissRound : BaseRound
+class NoFallingRound : BaseRound
 {
     BasePlugin host;
-    public DontMissRound(BasePlugin host)
-	{
-		this.host = host;
-	}
+    public NoFallingRound(BasePlugin host)
+    {
+        this.host = host;
+    }
 
     public override string GetRoundName()
     {
-        return "Don't miss";
+        return "No Falling";
     }
 
     public override string GetRoundDescription()
     {
-        return "Take damage if you miss a shot.";
+        return "Die immediately if you take any fall damage.";
     }
 
     public override void OnRoundStart()
     {
-        Server.ExecuteCommand("mp_weapon_self_inflict_amount .33");
+        Server.ExecuteCommand("sv_falldamage_scale 100;");
     }
 
     public override void OnRoundEnd()
     {
-        Server.ExecuteCommand("mp_weapon_self_inflict_amount 0");
+        Server.ExecuteCommand("sv_falldamage_scale 1;");
     }
 }

@@ -16,7 +16,7 @@ class ZoomedOutRound : BaseRound
 
     public override string GetRoundDescription()
     {
-        return "Good luck trying to see.";
+        return "High FOV round.";
     }
 
     public override void OnRoundStart()
@@ -26,7 +26,7 @@ class ZoomedOutRound : BaseRound
 
     public override void PlayerCommands(CCSPlayerController plr)
     {
-        plr.DesiredFOV = 135;
+        plr.DesiredFOV = 150;
     }
 
     public override void OnRoundEnd()

@@ -8,6 +8,7 @@ using System.Numerics;
 class BigArmorRound : BaseRound
 {
     BasePlugin host;
+    Dictionary<CCSPlayerController, string> models = new Dictionary<CCSPlayerController, string>();
     public BigArmorRound(BasePlugin host)
 	{
         this.host = host;
@@ -20,21 +21,27 @@ class BigArmorRound : BaseRound
 
     public override string GetRoundDescription()
     {
-        return "You have a lot of health and armor.";
+        return "Take reduced damage with the heavy armor suit.";
     }
 
     public override void PlayerCommands(CCSPlayerController player)
     {
-        player.PlayerPawn.Value.Health = 100;
+        var playerPawn = player!.PlayerPawn.Value!;
+        if (!models.ContainsKey(player))
+        {
+            models[player] = playerPawn.CBodyComponent!.SceneNode!.GetSkeletonInstance().ModelState.ModelName;
+        }
+        playerPawn.Health = 100;
         Util.SetArmor(player, 1000, true, true);
-        Utilities.SetStateChanged(player.PlayerPawn.Value, "CCSPlayerPawnBase", "m_ArmorValue");
+        Utilities.SetStateChanged(playerPawn, "CCSPlayerPawnBase", "m_ArmorValue");
         if (player.Team == CsTeam.CounterTerrorist)
         {
-            player.PlayerPawn.Value.SetModel("characters\\models\\ctm_heavy\\ctm_heavy.vmdl");
+            playerPawn.SetModel("characters\\models\\ctm_heavy\\ctm_heavy.vmdl");
         } else
         {
-            player.PlayerPawn.Value.SetModel("characters\\models\\tm_phoenix_heavy\\tm_phoenix_heavy.vmdl");
+            playerPawn.SetModel("characters\\models\\tm_phoenix_heavy\\tm_phoenix_heavy.vmdl");
         }
+        Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_CBodyComponent");
     }
 
     public override void OnRoundStart() { 
@@ -45,6 +52,10 @@ class BigArmorRound : BaseRound
         foreach (CCSPlayerController plr in Utilities.GetPlayers())
         { 
             Util.SetArmor(plr, 100, true, false);
+            if (models.ContainsKey(plr))
+            {
+                plr.PlayerPawn.Value!.SetModel(models[plr]);
+            }
         }
     }
 }

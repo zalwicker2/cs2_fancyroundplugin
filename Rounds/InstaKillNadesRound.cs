@@ -19,7 +19,8 @@ class InstaKillNadesRound : BaseRound
         return "All nades are instant kills.";
     }
 
-    public override void OnRoundStart() {
+    public override void OnRoundStart()
+    {
         Server.ExecuteCommand("sv_hegrenade_damage_multiplier 100;");
         host.RegisterEventHandler<EventGrenadeThrown>(Util.InfiniteGrenades);
     }

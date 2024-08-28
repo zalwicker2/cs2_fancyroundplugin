@@ -13,6 +13,8 @@ namespace FancyRoundPlugin
 
         private BaseRound? currentRound = null;
 
+        Func<BaseRound>[] roundTypes;
+
         private void SendMessageToAllPlayers(string msg)
         {
             foreach (CCSPlayerController plr in Utilities.GetPlayers())
@@ -42,70 +44,36 @@ namespace FancyRoundPlugin
                 nextRound = rng.PickRandom();
             }
 
-            switch (nextRound)
-            {
-                case 0:
-                    currentRound = new ZoomedOutRound(this);
-                    break;
-                case 1:
-                    currentRound = new LowGravity(this);
-                    break;
-                case 2:
-                    currentRound = new BhopRound(this);
-                    break;
-                case 3:
-                    currentRound = new NoFallingRound(this);
-                    break;
-                case 4:
-                    currentRound = new VampireRound(this);
-                    break;
-                case 5:
-                    currentRound = new InstaKillNadesRound(this);
-                    break;
-                case 6:
-                    currentRound = new HeadshotOnlyRound(this);
-                    break;
-                case 7:
-                    currentRound = new TeleportRound(this);
-                    break;
-                case 8:
-                    currentRound = new DeadlyFlashRound(this);
-                    break;
-                case 9:
-                    currentRound = new SneakyRound(this);
-                    break;
-                case 10:
-                    currentRound = new BigArmorRound(this);
-                    break;
-                case 11:
-                    currentRound = new OverwatchRound(this);
-                    break;
-                case 12:
-                    currentRound = new WallhackRound(this);
-                    break;
-                case 13:
-                    currentRound = new MartydomRound(this);
-                    break;
-                case 14:
-                    currentRound = new DontMissRound(this);
-                    break;
-                case 15:
-                    currentRound = new ZeusRound(this);
-                    break;
-                case 16:
-                    currentRound = new ChickenRound(this);
-                    break;
-            }
+            currentRound = roundTypes[nextRound]();
         }
 
         public override void Load(bool hotReload)
         {
 
+            roundTypes = new Func<BaseRound>[]
+            {
+                () => new ZoomedOutRound(this),
+                () => new LowGravity(this),
+                () => new BhopRound(this),
+                () => new NoFallingRound(this),
+                () => new VampireRound(this),
+                () => new InstaKillNadesRound(this),
+                () => new HeadshotOnlyRound(this),
+                () => new TeleportRound(this),
+                () => new DeadlyFlashRound(this),
+                () => new SneakyRound(this),
+                () => new BigArmorRound(this),
+                () => new OverwatchRound(this),
+                () => new WallhackRound(this),
+                () => new MartydomRound(this),
+                () => new DontMissRound(this),
+                () => new ZeusRound(this),
+                () => new TeleportOnKill(this)
+            };
+
             Console.WriteLine("mike is a bitch, plugin loaded 2");
 
-            RegisterListener<Listeners.OnClientConnect>(OnPlayerConnect);
-
-            rng = new Randomizer(16);
+            rng = new Randomizer(17);
 
             AddCommand("resetround", "resets teh round", (client, commandinfo) =>
             {
@@ -142,7 +110,15 @@ namespace FancyRoundPlugin
                     return HookResult.Continue;
                 }
 
-                SetNextRound();
+                Random r = new Random();
+
+                if(r.Next(20) == 10)
+                {
+                    currentRound = new DoubleRound(this, new BaseRound[] { roundTypes[rng.PickRandom()](), roundTypes[rng.PickRandom()]() });
+                } else
+                {
+                    SetNextRound();
+                }
 
                 nextRound = -1;
 
@@ -152,21 +128,21 @@ namespace FancyRoundPlugin
 
             RegisterEventHandler<EventRoundStart>((@event, info) =>
             {
-                Console.WriteLine(currentRound!.GetRoundName());
 
                 if (currentRound != null)
                 {
+                    Console.WriteLine(currentRound!.GetRoundName());
                     currentRound.OnRoundStart();
-                }
 
-                foreach (CCSPlayerController plr in Utilities.GetPlayers())
-                {
-                    plr.PrintToCenterAlert(currentRound!.GetRoundName() + " Round");
-                    currentRound!.PlayerCommands(plr);
-                }
+                    foreach (CCSPlayerController plr in Utilities.GetPlayers())
+                    {
+                        plr.PrintToCenterAlert(currentRound!.GetRoundName() + " Round");
+                        currentRound!.PlayerCommands(plr);
+                    }
 
-                Server.PrintToChatAll($" >>> {ChatColors.Yellow}" + currentRound!.GetRoundName() + " Round");
-                Server.PrintToChatAll($" > {currentRound!.GetRoundDescription()}");
+                    Server.PrintToChatAll($" >>> {ChatColors.Yellow}" + currentRound!.GetRoundName() + " Round");
+                    Server.PrintToChatAll($" > {currentRound!.GetRoundDescription()}");
+                }
 
                 return HookResult.Continue;
             });
@@ -223,16 +199,6 @@ namespace FancyRoundPlugin
                 currentRound.OnRoundEnd();
             }
             currentRound = null;
-        }
-
-        private void OnPlayerConnect(int slot, string name, string ip)
-        {
-            var plr = new CCSPlayerController(NativeAPI.GetEntityFromIndex(slot + 1));
-            if (plr != null && !plr.IsBot)
-            {
-                Console.WriteLine("STEAMID: " + plr.SteamID);
-                Server.PrintToChatAll($"some loser named {name} joined.");
-            }
         }
     }
 
