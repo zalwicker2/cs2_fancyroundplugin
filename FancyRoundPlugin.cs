@@ -105,7 +105,7 @@ namespace FancyRoundPlugin
                 int rounds = gameRules.TotalRoundsPlayed;
                 Console.WriteLine("round " + rounds + " start!");
 
-                if (rounds % 12 == 0)
+                if (rounds % 12 == 0 || rounds % 2 == 0)
                 {
                     return HookResult.Continue;
                 }
