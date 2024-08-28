@@ -33,4 +33,4 @@ jobs:
       with:
         name: Build-Output
         path: |
-          ./YourProject/bin/Release/
+          ./bin/Release/
